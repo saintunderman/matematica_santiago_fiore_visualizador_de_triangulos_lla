@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visualizador de triángulos caso LLA</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f6f8fa;
+    --border: #d0d7de;
+    --accent-blue: #0969da;
+    --accent-red: #cf222e;
+    --accent-amber: #9a6700;
+    --accent-green: #1a7f37;
+    --accent-purple: #8250df;
+    --text: #1f2328;
+    --text-muted: #636c76;
+    --mono: Calibri, 'Segoe UI', Tahoma, sans-serif;
+    --sans: Calibri, 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--accent-blue);
+    letter-spacing: 0.02em;
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: #eaf0f7;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .chip:hover {
+    background: #d0e3f5;
+    color: var(--accent-blue);
+    border-color: var(--accent-blue);
+    transform: translateY(-1px);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .ctrl-group { display: flex; flex-direction: column; gap: 0.6rem; }
+  .ctrl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+  }
+  .ctrl-label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+  }
+  .ctrl-val {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+  }
+  .ctrl-val-alpha {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent-green);
+  }
+
+  .controls-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #d0d7de;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--accent-blue);
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent-blue);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    background: var(--accent-blue);
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent-blue);
+    cursor: pointer;
+  }
+
+  /* Slider específico para ángulo α - verde oscuro */
+  #rangeA::-webkit-slider-thumb {
+    background: var(--accent-green);
+    box-shadow: 0 0 0 1px var(--accent-green);
+  }
+  #rangeA::-moz-range-thumb {
+    background: var(--accent-green);
+    box-shadow: 0 0 0 1px var(--accent-green);
+  }
+
+  .divider { height: 1px; background: var(--border); }
+
+  /* STATUS BOX */
+  .status-box {
+    border-radius: 8px;
+    padding: 1.2rem;
+    border: 1px solid var(--border);
+    background: #eaf0f7;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .badge-0 { background: rgba(248,81,73,0.15); color: var(--accent-red); border: 1px solid rgba(248,81,73,0.4); }
+  .badge-1 { background: rgba(63,185,80,0.15); color: var(--accent-green); border: 1px solid rgba(63,185,80,0.4); }
+  .badge-2 { background: rgba(227,179,65,0.15); color: var(--accent-amber); border: 1px solid rgba(227,179,65,0.4); }
+
+  .math-row {
+    display: none;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+  .math-row span { color: var(--text); }
+  .alpha-highlight { color: var(--accent-green); font-weight: 700; }
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin-top: 0.3rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+  }
+  .legend-title {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .leg-line {
+    width: 20px; height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .leg-dashed {
+    width: 20px; height: 0;
+    border-top: 2px dashed;
+    flex-shrink: 0;
+  }
+
+  /* ── CANVAS ── */
+  .viewport {
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas.dragging { cursor: grabbing; }
+
+  /* ── ZOOM CONTROLS ── */
+  .zoom-controls {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 10;
+  }
+  .zoom-controls button {
+    width: 34px;
+    height: 34px;
+    background: #eaf0f7;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+  }
+  .zoom-controls button:hover {
+    background: #d0d7de;
+    color: var(--text);
+  }
+  .zoom-level {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  /* ── RESPONSIVE: tablet ── */
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 260px 1fr;
+    }
+  }
+
+  /* ── RESPONSIVE: mobile ── */
+  @media (max-width: 640px) {
+    body {
+      height: auto;
+      min-height: 100dvh;
+      overflow-y: auto;
+      grid-template-rows: auto auto;
+    }
+
+    header {
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      padding: 0.6rem 1rem;
+    }
+
+    header h1 {
+      font-size: 0.78rem;
+    }
+
+    .layout {
+      grid-template-columns: 1fr;
+      overflow: visible;
+      height: auto;
+    }
+
+    .sidebar {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      overflow-y: visible;
+      padding: 1.2rem;
+      gap: 1rem;
+    }
+
+    .controls-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .legend-grid {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .viewport {
+      height: 60vw;
+      min-height: 260px;
+      max-height: 55vh;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Visualizador de triángulos caso LLA</h1>
+  <a href="https://sites.google.com/view/santiago-fiore/portada" target="_blank" class="chip" title="Visitar sitio web de Santiago Fiore">Fiore (2026) · Sitio Web</a>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+
+    <div class="controls-wrap">
+
+      <div class="ctrl-group">
+        <div class="ctrl-header">
+          <span class="ctrl-label">Ángulo α</span>
+          <span class="ctrl-val-alpha" id="valA">30°</span>
+        </div>
+        <input type="range" id="rangeA" min="1" max="178" value="30">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-header">
+          <span class="ctrl-label">Lado b (adyacente a α)</span>
+          <span class="ctrl-val" id="valB">8.00</span>
+        </div>
+        <input type="range" id="rangeB" min="1" max="15" step="0.1" value="8">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-header">
+          <span class="ctrl-label">Lado a (opuesto a α)</span>
+          <span class="ctrl-val" id="vala">5.00</span>
+        </div>
+        <input type="range" id="rangea" min="0.5" max="20" step="0.1" value="5">
+      </div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="status-box">
+      <div id="statusBadge" class="status-badge badge-0">—</div>
+      <div class="math-row" id="mathRows"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="legend-title">REFERENCIAS</div>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="leg-line" style="background:#0969da"></div> Lado b (fijo)</div>
+      <div class="legend-item"><div class="leg-line" style="background:#cf222e"></div> Lado a — Sol. 1</div>
+      <div class="legend-item"><div class="leg-line" style="background:#9a6700"></div> Lado a — Sol. 2</div>
+      <div class="legend-item"><div class="leg-line" style="background:#8250df"></div> Altura h</div>
+      <div class="legend-item"><div class="leg-dashed" style="border-color:#636c76"></div> Circunf. radio a</div>
+      <div class="legend-item"><div class="leg-dashed" style="border-color:#8c959f"></div> Recta base</div>
+    </div>
+
+  </aside>
+
+  <main class="viewport">
+    <canvas id="c"></canvas>
+    <div class="zoom-controls">
+      <button id="zoomIn"  title="Acercar">+</button>
+      <button id="zoomOut" title="Alejar">−</button>
+      <button id="zoomReset" title="Restablecer vista" style="font-size:0.85rem;">⟳</button>
+      <div class="zoom-level" id="zoomLevel">100%</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const rA = document.getElementById('rangeA');
+const rB = document.getElementById('rangeB');
+const ra = document.getElementById('rangea');
+
+let S = { A: 30, b: 8, a: 5 };
+let solutions = [];
+
+// ── ZOOM / PAN ────────────────────────────────────────
+let zoom = 1, panX = 0, panY = 0;
+let isDragging = false, dragStart = { x: 0, y: 0 };
+let lastTouchDist = null, lastTouchMid = null;
+
+function clampZoom(z) { return Math.max(0.15, Math.min(12, z)); }
+
+function applyZoom(dz, mx, my) {
+  const nz = clampZoom(zoom * dz);
+  const r  = nz / zoom;
+  panX = mx * (1 - r) + r * panX;
+  panY = my * (1 - r) + r * panY;
+  zoom = nz;
+  updateZoomLabel();
+  draw();
+}
+
+function resetView() {
+  zoom = 1; panX = 0; panY = 0;
+  updateZoomLabel();
+  draw();
+}
+
+function updateZoomLabel() {
+  document.getElementById('zoomLevel').textContent = Math.round(zoom * 100) + '%';
+}
+
+function getTouchDist(t) {
+  const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+function getTouchMid(t) {
+  return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 };
+}
+
+// ── INIT ──────────────────────────────────────────────
+function init() {
+  const ro = new ResizeObserver(() => { resizeCanvas(); draw(); });
+  ro.observe(canvas.parentElement);
+  [rA, rB, ra].forEach(el => el.addEventListener('input', () => { readInputs(); draw(); }));
+
+  // Zoom buttons
+  const W2 = () => canvas.width  / (window.devicePixelRatio || 1) / 2;
+  const H2 = () => canvas.height / (window.devicePixelRatio || 1) / 2;
+  document.getElementById('zoomIn').addEventListener('click',    () => applyZoom(1.25, W2(), H2()));
+  document.getElementById('zoomOut').addEventListener('click',   () => applyZoom(1/1.25, W2(), H2()));
+  document.getElementById('zoomReset').addEventListener('click', () => resetView());
+
+  // Mouse wheel
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    applyZoom(e.deltaY < 0 ? 1.1 : 1/1.1, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  // Mouse drag
+  canvas.addEventListener('mousedown', e => {
+    isDragging = true;
+    dragStart = { x: e.clientX - panX, y: e.clientY - panY };
+    canvas.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    panX = e.clientX - dragStart.x;
+    panY = e.clientY - dragStart.y;
+    draw();
+  });
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    canvas.classList.remove('dragging');
+  });
+
+  // Touch pan & pinch-zoom
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      dragStart = { x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY };
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      lastTouchDist = getTouchDist(e.touches);
+      lastTouchMid  = getTouchMid(e.touches);
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isDragging) {
+      panX = e.touches[0].clientX - dragStart.x;
+      panY = e.touches[0].clientY - dragStart.y;
+      draw();
+    } else if (e.touches.length === 2 && lastTouchDist) {
+      const dist = getTouchDist(e.touches);
+      const mid  = getTouchMid(e.touches);
+      const rect = canvas.getBoundingClientRect();
+      const mx   = mid.x - rect.left, my = mid.y - rect.top;
+      const dz   = dist / lastTouchDist;
+      const nz   = clampZoom(zoom * dz), r = nz / zoom;
+      panX = mx * (1 - r) + r * panX + (mid.x - lastTouchMid.x);
+      panY = my * (1 - r) + r * panY + (mid.y - lastTouchMid.y);
+      zoom = nz;
+      lastTouchDist = dist;
+      lastTouchMid  = mid;
+      updateZoomLabel();
+      draw();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    if (e.touches.length < 2) lastTouchDist = null;
+    if (e.touches.length === 0) isDragging = false;
+  }, { passive: true });
+
+  resizeCanvas();
+  draw();
+}
+
+function resizeCanvas() {
+  const parent = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = parent.clientWidth  * dpr;
+  canvas.height = parent.clientHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function readInputs() {
+  S.A = parseFloat(rA.value);
+  S.b = parseFloat(rB.value);
+  S.a = parseFloat(ra.value);
+  document.getElementById('valA').textContent = `${S.A}°`;
+  document.getElementById('valB').textContent = S.b.toFixed(2);
+  document.getElementById('vala').textContent  = S.a.toFixed(2);
+  solve();
+}
+
+// ── SOLVE SSA ─────────────────────────────────────────
+function solve() {
+  const radA = S.A * Math.PI / 180;
+  const h = S.b * Math.sin(radA);
+  solutions = [];
+
+  // Cuadrática: c² - 2b·cosA·c + (b²-a²) = 0
+  const p = -2 * S.b * Math.cos(radA);
+  const q = S.b * S.b - S.a * S.a;
+  const disc = p * p - 4 * q;
+  const eps = 1e-6;
+
+  if (disc >= -eps) {
+    const sq = Math.sqrt(Math.max(0, disc));
+    const c1 = (-p + sq) / 2;
+    const c2 = (-p - sq) / 2;
+    if (c1 > eps) solutions.push(c1);
+    if (c2 > eps && Math.abs(c1 - c2) > eps) solutions.push(c2);
+  }
+
+  updateUI(h);
+}
+
+// ── UI UPDATE ─────────────────────────────────────────
+function updateUI(h) {
+  const badge = document.getElementById('statusBadge');
+  const math  = document.getElementById('mathRows');
+  const n = solutions.length;
+
+  let label = '', cls = '';
+  if (n === 0) { label = '● 0 soluciones'; cls = 'badge-0'; }
+  else if (n === 1) { label = '● 1 solución'; cls = 'badge-1'; }
+  else { label = '● 2 soluciones'; cls = 'badge-2'; }
+
+  badge.textContent = label;
+  badge.className = `status-badge ${cls}`;
+
+  const sinVal = Math.sin(S.A * Math.PI / 180);
+  const cond = S.A < 90
+    ? `<span class="alpha-highlight">α</span> < 90°: comparar a con h`
+    : `<span class="alpha-highlight">α</span> ≥ 90°: comparar a con b`;
+
+  math.innerHTML = `
+    h = b·sin <span class="alpha-highlight">α</span> = ${S.b.toFixed(2)}·sin(${S.A}°) = <span>${h.toFixed(4)}</span><br>
+    a = <span>${S.a.toFixed(2)}</span> | b = <span>${S.b.toFixed(2)}</span><br>
+    Condición: <span>${cond}</span><br>
+    ${solutions.map((c,i)=>`c<sub>${i+1}</sub> = <span>${c.toFixed(4)}</span>`).join('<br>')}
+  `;
+}
+
+// ── DRAW ──────────────────────────────────────────────
+function draw() {
+  const W = canvas.width  / (window.devicePixelRatio || 1);
+  const H = canvas.height / (window.devicePixelRatio || 1);
+  if (W < 10 || H < 10) return;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const radA = S.A * Math.PI / 180;
+
+  // Vertex A is at origin; C is at angle (π - α) from x-axis
+  // C coords in world: (b·cosA, b·sinA) — we'll flip Y for canvas
+  const Cx_w = S.b * Math.cos(radA);
+  const Cy_w = S.b * Math.sin(radA); // positive upward in math
+
+  // All candidate B points lie on y=0 (base line), x = solutions[i]
+  // We need to find world bounding box
+  const pad = 2;
+  let minX = Math.min(-pad, Cx_w - S.a - pad);
+  let maxX = Math.max(solutions.length ? Math.max(...solutions) + pad : S.a + pad, Cx_w + S.a + pad);
+  let minY = -pad; // base line
+  let maxY = Cy_w + S.a + pad;
+
+  // Protect aspect
+  const worldW = maxX - minX;
+  const worldH = maxY - minY;
+  const margin = 60;
+  const scaleX = (W - margin * 2) / worldW;
+  const scaleY = (H - margin * 2) / worldH;
+  const scale  = Math.min(scaleX, scaleY);
+
+  // Center the world in canvas
+  const cx = W / 2 - (minX + worldW / 2) * scale;
+  const cy = H / 2 + (minY + worldH / 2) * scale; // Y flip pivot
+
+  function tx(wx) { return zoom * (cx + wx * scale) + panX; }
+  function ty(wy) { return zoom * (cy - wy * scale) + panY; }
+
+  // ── 1. Dashed base line ──
+  ctx.save();
+  ctx.setLineDash([6, 5]);
+  ctx.strokeStyle = '#c8d0d9';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(tx(minX - 3), ty(0));
+  ctx.lineTo(tx(maxX + 3), ty(0));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // ── 2. Circle radius a (from C) ──
+  ctx.save();
+  ctx.setLineDash([8, 5]);
+  ctx.strokeStyle = 'rgba(100,116,139,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(tx(Cx_w), ty(Cy_w), S.a * scale * zoom, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // ── 3. Height h (from C perpendicular to base) ──
+  const h = S.b * Math.sin(radA);
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#8250df';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(tx(Cx_w), ty(0));
+  ctx.lineTo(tx(Cx_w), ty(Cy_w));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Right angle marker at foot
+  const ms = 7;
+  ctx.strokeStyle = '#8250df';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(tx(Cx_w) + ms, ty(0));
+  ctx.lineTo(tx(Cx_w) + ms, ty(0) - ms);
+  ctx.lineTo(tx(Cx_w),      ty(0) - ms);
+  ctx.stroke();
+  // h label - in world coordinates
+  ctx.fillStyle = '#8250df';
+  ctx.font = `bold ${11}px Calibri, sans-serif`;
+  const hLabelX_w = Cx_w + Math.min(0.3, S.b * 0.08);
+  const hLabelY_w = Cy_w * 0.5;
+  ctx.fillText('h', tx(hLabelX_w), ty(hLabelY_w));
+  ctx.restore();
+
+  // ── 4. Triangle(s) — side a ──
+  const colors = ['#cf222e', '#9a6700'];
+  solutions.forEach((cVal, i) => {
+    ctx.save();
+    ctx.strokeStyle = colors[i];
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    // Fill triangle lightly
+    ctx.beginPath();
+    ctx.moveTo(tx(0), ty(0));
+    ctx.lineTo(tx(Cx_w), ty(Cy_w));
+    ctx.lineTo(tx(cVal), ty(0));
+    ctx.closePath();
+    ctx.fillStyle = i === 0 ? 'rgba(207,34,46,0.08)' : 'rgba(154,103,0,0.08)';
+    ctx.fill();
+    // Draw side a (C→B)
+    ctx.beginPath();
+    ctx.moveTo(tx(Cx_w), ty(Cy_w));
+    ctx.lineTo(tx(cVal), ty(0));
+    ctx.stroke();
+    // Draw side c (A→B)
+    ctx.strokeStyle = i === 0 ? 'rgba(207,34,46,0.5)' : 'rgba(154,103,0,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    ctx.moveTo(tx(0), ty(0));
+    ctx.lineTo(tx(cVal), ty(0));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Vertex B dot + label
+    ctx.fillStyle = colors[i];
+    ctx.beginPath();
+    ctx.arc(tx(cVal), ty(0), 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1f2328';
+    ctx.font = `bold ${12}px Calibri, sans-serif`;
+    const bLabel = solutions.length > 1 ? (i === 0 ? 'B₁' : 'B₂') : 'B';
+    // Position B label below the point
+    const bLabelWidth = ctx.measureText(bLabel).width;
+    ctx.fillText(bLabel, tx(cVal) - bLabelWidth / 2, ty(0) + 18);
+
+    // Side 'a' label midpoint - in world coordinates
+    const mx_w = (Cx_w + cVal) / 2;
+    const my_w = Cy_w / 2;
+    ctx.fillStyle = colors[i];
+    ctx.font = `bold ${11}px Calibri, sans-serif`;
+    // Get the perpendicular direction to the line in world coords
+    const dx_w = cVal - Cx_w;
+    const dy_w = -Cy_w; // negative because we want downward in world
+    const len_w = Math.sqrt(dx_w * dx_w + dy_w * dy_w);
+    const perpOffset_w = Math.min(0.4, len_w * 0.15);
+    const perpOffsetX_w = (-dy_w / len_w) * perpOffset_w;
+    const perpOffsetY_w = (dx_w / len_w) * perpOffset_w;
+    ctx.fillText('a', tx(mx_w + perpOffsetX_w), ty(my_w + perpOffsetY_w));
+
+    ctx.restore();
+  });
+
+  // ── 5. Side b (A→C) ──
+  ctx.save();
+  ctx.strokeStyle = '#0969da';
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(tx(0), ty(0));
+  ctx.lineTo(tx(Cx_w), ty(Cy_w));
+  ctx.stroke();
+  // b label - position perpendicular to the line in world coords
+  const bMx_w = Cx_w * 0.5;
+  const bMy_w = Cy_w * 0.5;
+  ctx.fillStyle = '#0969da';
+  ctx.font = `bold ${12}px Calibri, sans-serif`;
+  // Calculate perpendicular offset to the left of the line in world coords
+  const bLen = Math.sqrt(Cx_w * Cx_w + Cy_w * Cy_w);
+  const perpOffset_w = Math.min(0.5, bLen * 0.15);
+  const perpBx_w = (-Cy_w / bLen) * perpOffset_w;
+  const perpBy_w = (Cx_w / bLen) * perpOffset_w;
+  ctx.fillText('b', tx(bMx_w + perpBx_w), ty(bMy_w + perpBy_w));
+  ctx.restore();
+
+  // ── 6. Angle arc at A ──
+  ctx.save();
+  const angleColor = '#1a7f37'; // verde oscuro
+  ctx.strokeStyle = angleColor;
+  ctx.lineWidth = 2;
+  
+  // Arc radius in world coordinates
+  const arcR_world = Math.min(1.5, S.b * 0.3);
+  const arcR_screen = arcR_world * scale * zoom;
+  
+  // Check if it's a right angle (90°)
+  const isRightAngle = Math.abs(S.A - 90) < 0.5;
+  
+  if (isRightAngle) {
+    // Draw a square for right angle in world coordinates
+    const squareSize_w = arcR_world * 0.65;
+    ctx.beginPath();
+    ctx.moveTo(tx(squareSize_w), ty(0));
+    ctx.lineTo(tx(squareSize_w), ty(squareSize_w));
+    ctx.lineTo(tx(0), ty(squareSize_w));
+    ctx.stroke();
+    // Label α for right angle - INSIDE the square
+    const labelX_w = squareSize_w * 0.5;
+    const labelY_w = squareSize_w * 0.45;
+    ctx.fillStyle = angleColor;
+    ctx.font = `bold ${12}px Calibri, sans-serif`;
+    ctx.fillText('α', tx(labelX_w), ty(labelY_w));
+  } else {
+    // Draw arc for non-right angles
+    ctx.beginPath();
+    ctx.arc(tx(0), ty(0), arcR_screen, -radA, 0);
+    ctx.stroke();
+    // Label α positioned INSIDE the arc at the bisector
+    ctx.fillStyle = angleColor;
+    ctx.font = `bold ${12}px Calibri, sans-serif`;
+    // Bisector angle in WORLD coordinates (positive angles go counterclockwise from X+)
+    // The angle α goes from 0 to radA in world coords
+    const bisectorAngle_world = radA / 2;
+    // Position INSIDE arc - use 0.55 of radius to ensure it's inside
+    const labelDist_w = arcR_world * 0.55;
+    const labelX_w = labelDist_w * Math.cos(bisectorAngle_world);
+    const labelY_w = labelDist_w * Math.sin(bisectorAngle_world);
+    // Apply transformation
+    ctx.fillText('α', tx(labelX_w), ty(labelY_w));
+  }
+  ctx.restore();
+
+  // ── 7. Vertices A and C ──
+  [[0, 0, 'A', '#1f2328'], [Cx_w, Cy_w, 'C', '#0969da']].forEach(([wx, wy, label, col]) => {
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(tx(wx), ty(wy), 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#1f2328';
+    ctx.font = `bold ${13}px Calibri, sans-serif`;
+    // Position labels in world coordinates for consistency
+    const offsetDist_w = Math.min(0.5, S.b * 0.12);
+    if (label === 'A') {
+      // A label to the left and below
+      ctx.fillText(label, tx(wx - offsetDist_w * 0.8), ty(wy - offsetDist_w * 0.8));
+    } else {
+      // C label above and to the left
+      ctx.fillText(label, tx(wx - offsetDist_w * 0.6), ty(wy + offsetDist_w * 0.8));
+    }
+    ctx.restore();
+  });
+
+  // ── 8. "No solution" message ──
+  if (solutions.length === 0) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(207,34,46,0.08)';
+    ctx.fillRect(W/2 - 180, H/2 - 30, 360, 60);
+    ctx.strokeStyle = 'rgba(207,34,46,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W/2 - 180, H/2 - 30, 360, 60);
+    ctx.fillStyle = '#cf222e';
+    ctx.font = `bold ${15}px Calibri, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Sin solución — el lado a no alcanza la base', W/2, H/2 + 6);
+    ctx.textAlign = 'left'; // reset
+    ctx.restore();
+  }
+}
+
+// ── GRID ──────────────────────────────────────────────
+function drawGrid(W, H) {
+  ctx.save();
+  ctx.strokeStyle = '#e8ecf0';
+  ctx.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── Kick off ──────────────────────────────────────────
+readInputs();
+init();
+</script>
+</body>
+</html>
