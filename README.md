@@ -13,12 +13,12 @@ Esta herramienta interactiva permite visualizar y resolver el **caso ambiguo de 
 * **Análisis Predictivo:** Clasificación automática del estado del triángulo mediante badges de color (0, 1 o 2 soluciones).
 * **Precisión Matemática:** Visualización de los cálculos de la altura y las longitudes resultantes para el tercer lado ($$c$$).
 
-## Instalación y Uso
+# Instalación y Uso
 
 Al ser una **Single File Application**, no requiere instalación:
 Acceso al simulador: https://saintunderman.github.io/matematica_santiago_fiore_visualizador_de_triangulos_lla/
 
-### Desarrollado por **Santiago Fiore**.
+# Desarrollado por **Santiago Fiore**.
 
 * **Sitio Web:** https://sites.google.com/view/santiago-fiore/portada
 * **Licencia:** Creative Commons CC BY-NC-SA 4.0 (Atribución-NoComercial-CompartirIgual).
